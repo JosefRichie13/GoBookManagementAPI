@@ -60,7 +60,7 @@ func addABook(c *gin.Context) {
 	var checkResult string
 	result.Scan(&checkResult)
 
-	// If the length of checkResult is greater than 0, means the query returned a result and its rejected with a 403
+	// If the length of checkResult is greater than 0, means the query returned a result, so there is a book by that author already, then its rejected with a 403
 	// Else, its added to the DB
 	if len(checkResult) > 0 {
 

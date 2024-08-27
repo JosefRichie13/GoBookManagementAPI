@@ -16,6 +16,7 @@ func main() {
 	request.POST("/updateBookDetails", updateBookDetails)
 	request.POST("/startABook", startABook)
 	request.POST("/finishABook", finishABook)
+	request.POST("/updateABook", updateABook)
 	request.GET("/getBookID", getBookID)
 	request.Run(":8083")
 
@@ -343,6 +344,86 @@ func finishABook(c *gin.Context) {
 
 	} else {
 		c.JSON(404, gin.H{"status": "No Book with ID, " + finishABookParameters.BookID + " exists"})
+	}
+
+}
+
+// Defining JSON body for updateABook(). It requires 2 JSON key's bookID, pages.
+type UpdateABookParameters struct {
+	BookID string `json:"bookID" binding:"required"`
+	Pages  int    `json:"pages" binding:"required"`
+}
+
+// Updates a Book by updating its DATE FINISHED column
+func updateABook(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Creating an instance of the struct, UpdateABookParameters
+	var updateABookParameters UpdateABookParameters
+
+	// Bind to the struct's members. If any member is invalid, binding does not happen and an error will be returned. Then its rejected with 400
+	if c.BindJSON(&updateABookParameters) != nil {
+		c.JSON(400, gin.H{"status": "Incorrect parameters, please provide all required parameters"})
+		return
+	}
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Check if the BookID exists in the DB by querying for the ID
+	// Result is scanned into the variable, checkResult
+	queryToCheckExistingBook := `SELECT ID FROM BOOKMANAGEMENT WHERE ID=$1;`
+	resultToCheckExistingBook := db.QueryRow(queryToCheckExistingBook, updateABookParameters.BookID)
+	var checkResult string
+	resultToCheckExistingBook.Scan(&checkResult)
+
+	// If the length of checkResult is greater than 0, means the query returned a result, so there is a book by that ID
+	// Else, its rejected with a 404 as there is no book by that ID
+	if len(checkResult) > 0 {
+
+		// Check if the BookID exists in the DB by querying for the ID
+		// Result is scanned into the variable, result
+		queryToCheckExistingBookDates := `SELECT TOTALPAGES, DATESTARTED, DATEFINISHED FROM BOOKMANAGEMENT WHERE ID=$1;`
+		result := db.QueryRow(queryToCheckExistingBookDates, updateABookParameters.BookID)
+
+		// Defining a struct to hold the data queried by the query and scanning into it
+		type CheckDates struct {
+			checkDateStarted  int
+			checkDateFinished int
+			totalPages        int
+		}
+		var checkDates CheckDates
+		result.Scan(&checkDates.totalPages, &checkDates.checkDateStarted, &checkDates.checkDateFinished)
+
+		// If the suppiled pages is greater less than the total pages, reject with 400
+		if updateABookParameters.Pages > checkDates.totalPages {
+			c.JSON(400, gin.H{"status": "Read pages cannot be greater than Total pages"})
+			return
+		}
+
+		// If DATESTARTED is not 0 and DATEFINISHED is 0, it means that the book is started but not finished
+		// We update the Read Pages
+		// ELSE, the book is not started or is already finished, we reject with 403
+		if checkDates.checkDateStarted != 0 && checkDates.checkDateFinished == 0 {
+			queryToFinishABook := `UPDATE BOOKMANAGEMENT SET READPAGES =$1 WHERE ID = $2;`
+			db.QueryRow(queryToFinishABook, updateABookParameters.Pages, updateABookParameters.BookID)
+			c.JSON(200, gin.H{"status": "Book, " + updateABookParameters.BookID + " updated."})
+			return
+		} else {
+			c.JSON(403, gin.H{"status": "Book, " + updateABookParameters.BookID + " is not started or is finished."})
+			return
+		}
+
+	} else {
+		c.JSON(404, gin.H{"status": "No Book with ID, " + updateABookParameters.BookID + " exists"})
 	}
 
 }

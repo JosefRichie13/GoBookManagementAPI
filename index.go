@@ -310,16 +310,17 @@ func finishABook(c *gin.Context) {
 
 		// Check if the BookID exists in the DB by querying for the ID
 		// Result is scanned into the variable, result
-		queryToCheckExistingBookDates := `SELECT DATESTARTED, DATEFINISHED FROM BOOKMANAGEMENT WHERE ID=$1;`
+		queryToCheckExistingBookDates := `SELECT TOTALPAGES, DATESTARTED, DATEFINISHED FROM BOOKMANAGEMENT WHERE ID=$1;`
 		result := db.QueryRow(queryToCheckExistingBookDates, finishABookParameters.BookID)
 
 		// Defining a struct to hold the data queried by the query and scanning into it
 		type CheckDates struct {
 			checkDateStarted  int
 			checkDateFinished int
+			totalPages        int
 		}
 		var checkDates CheckDates
-		result.Scan(&checkDates.checkDateStarted, &checkDates.checkDateFinished)
+		result.Scan(&checkDates.totalPages, &checkDates.checkDateStarted, &checkDates.checkDateFinished)
 
 		// If the finished date is less than the started date, reject with 400
 		if checkDates.checkDateStarted > convertDateToEpoch(finishABookParameters.Date) {
@@ -328,11 +329,11 @@ func finishABook(c *gin.Context) {
 		}
 
 		// If DATESTARTED is not 0 and DATEFINISHED is 0, it means that the book is started but not finished
-		// We update the DATEFINISHED column to finish the book
+		// We update the DATEFINISHED column to finish the book and set the Read Pages to the Total pages
 		// ELSE, the book is not started or is already finished, we reject with 403
 		if checkDates.checkDateStarted != 0 && checkDates.checkDateFinished == 0 {
-			queryToFinishABook := `UPDATE BOOKMANAGEMENT SET DATEFINISHED = $1 WHERE ID = $2;`
-			db.QueryRow(queryToFinishABook, convertDateToEpoch(finishABookParameters.Date), finishABookParameters.BookID)
+			queryToFinishABook := `UPDATE BOOKMANAGEMENT SET DATEFINISHED = $1, READPAGES =$2 WHERE ID = $3;`
+			db.QueryRow(queryToFinishABook, convertDateToEpoch(finishABookParameters.Date), checkDates.totalPages, finishABookParameters.BookID)
 			c.JSON(200, gin.H{"status": "Book, " + finishABookParameters.BookID + " finished."})
 			return
 		} else {

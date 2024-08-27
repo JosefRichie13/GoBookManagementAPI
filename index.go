@@ -179,7 +179,7 @@ func updateBookDetails(c *gin.Context) {
 		// Then if the update book details are different, update the book details
 		queryToUpdateABook := `UPDATE BOOKMANAGEMENT SET BOOK = $1, AUTHOR = $2, TOTALPAGES =$3 WHERE ID = $4;`
 		db.QueryRow(queryToUpdateABook, sanitizeString(updateBookDetailsParameters.BookName), sanitizeString(updateBookDetailsParameters.AuthorName), updateBookDetailsParameters.TotalPages, updateBookDetailsParameters.BookID)
-		c.JSON(200, gin.H{"status": "Book, " + updateBookDetailsParameters.BookID + " updated "})
+		c.JSON(200, gin.H{"status": "Book, " + updateBookDetailsParameters.BookID + " updated."})
 
 	} else {
 		c.JSON(404, gin.H{"status": "No Book with ID, " + updateBookDetailsParameters.BookID + " exists"})

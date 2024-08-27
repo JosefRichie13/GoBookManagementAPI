@@ -15,6 +15,7 @@ func main() {
 	request.POST("/addABook", addABook)
 	request.POST("/updateBookDetails", updateBookDetails)
 	request.POST("/startABook", startABook)
+	request.POST("/finishABook", finishABook)
 	request.GET("/getBookID", getBookID)
 	request.Run(":8083")
 
@@ -256,6 +257,91 @@ func startABook(c *gin.Context) {
 
 	} else {
 		c.JSON(404, gin.H{"status": "No Book with ID, " + startABookParameters.BookID + " exists"})
+	}
+
+}
+
+// Defining JSON body for finishABook(). It requires 2 JSON key's bookID, date.
+type FinishABookParameters struct {
+	BookID string `json:"bookID" binding:"required"`
+	Date   string `json:"date" binding:"required"`
+}
+
+// Finishes a Book by updating its DATE FINISHED column
+func finishABook(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Creating an instance of the struct, FinishABookParameters
+	var finishABookParameters FinishABookParameters
+
+	// Bind to the struct's members. If any member is invalid, binding does not happen and an error will be returned. Then its rejected with 400
+	if c.BindJSON(&finishABookParameters) != nil {
+		c.JSON(400, gin.H{"status": "Incorrect parameters, please provide all required parameters"})
+		return
+	}
+
+	// Checks if the supplied date is in DD-MMM-YYYY format
+	if !checkDateFormat(finishABookParameters.Date) {
+		c.JSON(400, gin.H{"status": "Incorrect Date format, Date should be in DD-MMM-YYYY format, e.g., 27-Aug-2024"})
+		return
+	}
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Check if the BookID exists in the DB by querying for the ID
+	// Result is scanned into the variable, checkResult
+	queryToCheckExistingBook := `SELECT ID FROM BOOKMANAGEMENT WHERE ID=$1;`
+	resultToCheckExistingBook := db.QueryRow(queryToCheckExistingBook, finishABookParameters.BookID)
+	var checkResult string
+	resultToCheckExistingBook.Scan(&checkResult)
+
+	// If the length of checkResult is greater than 0, means the query returned a result, so there is a book by that ID
+	// Else, its rejected with a 404 as there is no book by that ID
+	if len(checkResult) > 0 {
+
+		// Check if the BookID exists in the DB by querying for the ID
+		// Result is scanned into the variable, result
+		queryToCheckExistingBookDates := `SELECT DATESTARTED, DATEFINISHED FROM BOOKMANAGEMENT WHERE ID=$1;`
+		result := db.QueryRow(queryToCheckExistingBookDates, finishABookParameters.BookID)
+
+		// Defining a struct to hold the data queried by the query and scanning into it
+		type CheckDates struct {
+			checkDateStarted  int
+			checkDateFinished int
+		}
+		var checkDates CheckDates
+		result.Scan(&checkDates.checkDateStarted, &checkDates.checkDateFinished)
+
+		// If the finished date is less than the started date, reject with 400
+		if checkDates.checkDateStarted > convertDateToEpoch(finishABookParameters.Date) {
+			c.JSON(400, gin.H{"status": "Finished date cannot be less than Started date"})
+			return
+		}
+
+		// If DATESTARTED is not 0 and DATEFINISHED is 0, it means that the book is started but not finished
+		// We update the DATEFINISHED column to finish the book
+		// ELSE, the book is not started or is already finished, we reject with 403
+		if checkDates.checkDateStarted != 0 && checkDates.checkDateFinished == 0 {
+			queryToFinishABook := `UPDATE BOOKMANAGEMENT SET DATEFINISHED = $1 WHERE ID = $2;`
+			db.QueryRow(queryToFinishABook, convertDateToEpoch(finishABookParameters.Date), finishABookParameters.BookID)
+			c.JSON(200, gin.H{"status": "Book, " + finishABookParameters.BookID + " finished."})
+			return
+		} else {
+			c.JSON(403, gin.H{"status": "Book, " + finishABookParameters.BookID + " is not started or is finished."})
+			return
+		}
+
+	} else {
+		c.JSON(404, gin.H{"status": "No Book with ID, " + finishABookParameters.BookID + " exists"})
 	}
 
 }

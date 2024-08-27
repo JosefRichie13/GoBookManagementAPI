@@ -3,6 +3,7 @@ package main
 import (
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -28,5 +29,33 @@ func sanitizeString(stringToSanitize string) string {
 	strippedOutString := stripOutRegex.ReplaceAllString(replacingRightArrow, " ")
 
 	return strings.TrimSpace(strippedOutString)
+
+}
+
+// Checks if a string is in DD-MMM-YYYY format
+// Returns TRUE if yes, or FALSE if not
+func checkDateFormat(date string) bool {
+
+	regex := regexp.MustCompile(`^[0-9]{2}-[A-Za-z]{3}-[0-9]{4}$`)
+	if !regex.MatchString(date) {
+		return false
+	}
+	_, err := time.Parse("02-Jan-2006", date)
+
+	return err == nil
+
+}
+
+// Converts date in DD-MMM-YYYY format to Epoch Time and returns it
+func convertDateToEpoch(date string) int {
+
+	layout := "02-Jan-2006"
+	t, err := time.Parse(layout, date)
+	if err != nil {
+		panic(err)
+	}
+
+	epoch := t.Unix()
+	return int(epoch)
 
 }

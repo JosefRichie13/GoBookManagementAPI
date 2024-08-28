@@ -816,7 +816,7 @@ func getAllReadingBooks(c *gin.Context) {
 	defer db.Close()
 
 	// Query the DB and result is held into the variable, result
-	queryToGetAllBooks := `SELECT ID, BOOK, AUTHOR, TOTALPAGES, READPAGES FROM BOOKMANAGEMENT where DATESTARTED IS NOT 0 AND DATEFINISHED IS 0;`
+	queryToGetAllBooks := `SELECT ID, BOOK, AUTHOR, DATESTARTED, TOTALPAGES, READPAGES FROM BOOKMANAGEMENT where DATESTARTED IS NOT 0 AND DATEFINISHED IS 0;`
 	result, error := db.Query(queryToGetAllBooks)
 	// If there's any error when querying, return it
 	if error != nil {
@@ -830,6 +830,7 @@ func getAllReadingBooks(c *gin.Context) {
 		ID             string `json:"id"`
 		Book           string `json:"book"`
 		Author         string `json:"author"`
+		DateStarted    string `json:"dateStarted"`
 		TotalPages     int    `json:"totalPages"`
 		ReadPages      int    `json:"readPages"`
 		RemainingPages int    `json:"remainingPages"`
@@ -844,7 +845,18 @@ func getAllReadingBooks(c *gin.Context) {
 		//Creating a new struct
 		GetBookDetails := GetBookDetails{}
 		// Scan the results into the struct
-		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author, &GetBookDetails.TotalPages, &GetBookDetails.ReadPages)
+		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author, &GetBookDetails.DateStarted, &GetBookDetails.TotalPages, &GetBookDetails.ReadPages)
+
+		//Converting Date which is in String to Integer and into DD-MMM-YYYY format
+		dateStartConversion, errs := strconv.Atoi(GetBookDetails.DateStarted)
+		if errs != nil {
+			c.JSON(500, gin.H{"status": "Error Processing Start Date"})
+			return
+		}
+
+		//Adding the converted dates
+		GetBookDetails.DateStarted = convertEpochToDate(dateStartConversion)
+
 		// Calculating remaining pages, subtracting Read pages from Total pages, gives us the remaining pages
 		GetBookDetails.RemainingPages = GetBookDetails.TotalPages - GetBookDetails.ReadPages
 		// Append to the slice
@@ -852,7 +864,7 @@ func getAllReadingBooks(c *gin.Context) {
 	}
 
 	// Returning all the data
-	c.JSON(200, gin.H{"unreadBookDetails": getBookDetails})
+	c.JSON(200, gin.H{"currentlyReadingBooks": getBookDetails})
 
 }
 

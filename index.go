@@ -22,6 +22,7 @@ func main() {
 	request.POST("/addToANote", addToANote)
 	request.GET("/getBookID", getBookID)
 	request.GET("/getBookDetails", getBookDetails)
+	request.GET("/getAllBooks", getAllBooks)
 	request.Run(":8083")
 
 }
@@ -683,4 +684,81 @@ func getBookDetails(c *gin.Context) {
 	} else {
 		c.JSON(404, gin.H{"status": "No Book by ID, " + getBookDetailsParameters.BookID + " exists."})
 	}
+}
+
+// Returns all the available Book Details
+func getAllBooks(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Get everything from DB and result is scanned into the variable, result
+	queryToGetAllBooks := `SELECT * FROM BOOKMANAGEMENT;`
+	result, error := db.Query(queryToGetAllBooks)
+	// If there's any error, return it
+	if error != nil {
+		c.JSON(500, gin.H{"status": "Could not execute Query"})
+		return
+	}
+	defer result.Close()
+
+	// Defining a struct to hold all the values from the Query result
+	type GetBookDetails struct {
+		ID           string  `json:"id"`
+		Book         string  `json:"book"`
+		Author       string  `json:"author"`
+		TotalPages   int     `json:"totalPages"`
+		ReadPages    int     `json:"readPages"`
+		DateStarted  *int    `json:"dateStarted"`  // Using pointers here as this value may be null
+		DateFinished *int    `json:"dateFinished"` // Using pointers here as this value may be null
+		Notes        *string `json:"notes"`        // Using pointers here as this value may be null
+	}
+
+	// Creating a slice from the struct
+	getBookDetails := []GetBookDetails{}
+
+	// Iterating over the results
+	for result.Next() {
+
+		//Creating a new struct
+		GetBookDetails := GetBookDetails{}
+		// Scan the results into the struct
+		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author, &GetBookDetails.TotalPages, &GetBookDetails.ReadPages,
+			&GetBookDetails.DateStarted, &GetBookDetails.DateFinished, &GetBookDetails.Notes)
+
+		// If the DateStarted is null, assign 0 to it
+		if GetBookDetails.DateStarted == nil {
+			placeHolder := 0
+			GetBookDetails.DateStarted = &placeHolder
+		}
+
+		// If the DateFinished is null, assign 0 to it
+		if GetBookDetails.DateFinished == nil {
+			placeHolder := 0
+			GetBookDetails.DateFinished = &placeHolder
+		}
+
+		// If the Notes is null, assign an empty string to it
+		if GetBookDetails.Notes == nil {
+			placeHolder := ""
+			GetBookDetails.Notes = &placeHolder
+		}
+
+		// Append to the slice
+		getBookDetails = append(getBookDetails, GetBookDetails)
+
+	}
+
+	// Returning all the data
+	c.JSON(200, gin.H{"bookDetails": getBookDetails})
+
 }

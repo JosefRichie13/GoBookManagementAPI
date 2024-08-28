@@ -25,6 +25,7 @@ func main() {
 	request.GET("/getBookDetails", getBookDetails)
 	request.GET("/getAllBooks", getAllBooks)
 	request.GET("/getAllUnreadBooks", getAllUnreadBooks)
+	request.GET("/getAllReadingBooks", getAllReadingBooks)
 	request.Run(":8083")
 
 }
@@ -789,6 +790,62 @@ func getAllUnreadBooks(c *gin.Context) {
 		GetBookDetails := GetBookDetails{}
 		// Scan the results into the struct
 		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author)
+		// Append to the slice
+		getBookDetails = append(getBookDetails, GetBookDetails)
+	}
+
+	// Returning all the data
+	c.JSON(200, gin.H{"unreadBookDetails": getBookDetails})
+
+}
+
+// Returns all current Reading Book Details
+func getAllReadingBooks(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Get everything from DB and result is scanned into the variable, result
+	queryToGetAllBooks := `SELECT ID, BOOK, AUTHOR, TOTALPAGES, READPAGES FROM BOOKMANAGEMENT where DATESTARTED IS NOT 0 AND DATEFINISHED IS 0;`
+	result, error := db.Query(queryToGetAllBooks)
+	// If there's any error when querying, return it
+	if error != nil {
+		c.JSON(500, gin.H{"status": "Could not execute Query"})
+		return
+	}
+	defer result.Close()
+
+	// Defining a struct to hold all the values from the Query result
+	type GetBookDetails struct {
+		ID             string `json:"id"`
+		Book           string `json:"book"`
+		Author         string `json:"author"`
+		TotalPages     int    `json:"totalPages"`
+		ReadPages      int    `json:"readPages"`
+		RemainingPages int    `json:"remainingPages"`
+	}
+
+	// Creating a slice from the struct
+	getBookDetails := []GetBookDetails{}
+
+	// Iterating over the results
+	for result.Next() {
+
+		//Creating a new struct
+		GetBookDetails := GetBookDetails{}
+		// Scan the results into the struct
+		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author, &GetBookDetails.TotalPages, &GetBookDetails.ReadPages)
+		// Calculating remaining pages, subtracting Read pages from Total pages, gives us the remaining pages
+		GetBookDetails.RemainingPages = GetBookDetails.TotalPages - GetBookDetails.ReadPages
 		// Append to the slice
 		getBookDetails = append(getBookDetails, GetBookDetails)
 	}

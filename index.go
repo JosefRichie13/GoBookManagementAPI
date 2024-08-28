@@ -26,6 +26,7 @@ func main() {
 	request.GET("/getAllBooks", getAllBooks)
 	request.GET("/getAllUnreadBooks", getAllUnreadBooks)
 	request.GET("/getAllReadingBooks", getAllReadingBooks)
+	request.GET("/getAllFinishedBooks", getAllFinishedBooks)
 	request.Run(":8083")
 
 }
@@ -612,7 +613,7 @@ type GetBookDetailsParameters struct {
 	BookID string `form:"bookID" binding:"required"`
 }
 
-// Returns the Book Details
+// Returns a single Book Details
 func getBookDetails(c *gin.Context) {
 
 	// Variables for DB and Error
@@ -648,9 +649,9 @@ func getBookDetails(c *gin.Context) {
 		Author       string
 		TotalPages   int
 		ReadPages    int
-		DateStarted  int    // Using pointers here as this value may be null
-		DateFinished int    // Using pointers here as this value may be null
-		Notes        string // Using pointers here as this value may be null
+		DateStarted  int
+		DateFinished int
+		Notes        string
 	}
 
 	// Creating an instance of the struct, GetBookDetails
@@ -687,7 +688,7 @@ func getAllBooks(c *gin.Context) {
 	}
 	defer db.Close()
 
-	// Get everything from DB and result is scanned into the variable, result
+	// Query the DB and result is held into the variable, result
 	queryToGetAllBooks := `SELECT * FROM BOOKMANAGEMENT;`
 	result, error := db.Query(queryToGetAllBooks)
 	// If there's any error when querying, return it
@@ -724,14 +725,14 @@ func getAllBooks(c *gin.Context) {
 		//Converting Date which is in String to Integer and into DD-MMM-YYYY format
 		dateStartConversion, errs := strconv.Atoi(GetBookDetails.DateStarted)
 		if errs != nil {
-			c.JSON(500, gin.H{"status": "Error Processing Date"})
+			c.JSON(500, gin.H{"status": "Error Processing Start Date"})
 			return
 		}
 
 		//Converting Date which is in String to Integer and into DD-MMM-YYYY format
 		dateFinishConversion, errs := strconv.Atoi(GetBookDetails.DateFinished)
 		if errs != nil {
-			c.JSON(500, gin.H{"status": "Error Processing Date"})
+			c.JSON(500, gin.H{"status": "Error Processing Finish Date"})
 			return
 		}
 
@@ -763,7 +764,7 @@ func getAllUnreadBooks(c *gin.Context) {
 	}
 	defer db.Close()
 
-	// Get everything from DB and result is scanned into the variable, result
+	// Query the DB and result is held into the variable, result
 	queryToGetAllBooks := `SELECT ID, BOOK, AUTHOR FROM BOOKMANAGEMENT where DATESTARTED IS 0 AND DATEFINISHED IS 0;`
 	result, error := db.Query(queryToGetAllBooks)
 	// If there's any error when querying, return it
@@ -814,7 +815,7 @@ func getAllReadingBooks(c *gin.Context) {
 	}
 	defer db.Close()
 
-	// Get everything from DB and result is scanned into the variable, result
+	// Query the DB and result is held into the variable, result
 	queryToGetAllBooks := `SELECT ID, BOOK, AUTHOR, TOTALPAGES, READPAGES FROM BOOKMANAGEMENT where DATESTARTED IS NOT 0 AND DATEFINISHED IS 0;`
 	result, error := db.Query(queryToGetAllBooks)
 	// If there's any error when querying, return it
@@ -852,5 +853,78 @@ func getAllReadingBooks(c *gin.Context) {
 
 	// Returning all the data
 	c.JSON(200, gin.H{"unreadBookDetails": getBookDetails})
+
+}
+
+// Returns all Finished Book Details
+func getAllFinishedBooks(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Query the DB and result is held into the variable, result
+	queryToGetAllBooks := `SELECT ID, BOOK, AUTHOR, DATESTARTED, DATEFINISHED FROM BOOKMANAGEMENT where DATESTARTED IS NOT 0 AND DATEFINISHED IS NOT 0;`
+	result, error := db.Query(queryToGetAllBooks)
+	// If there's any error when querying, return it
+	if error != nil {
+		c.JSON(500, gin.H{"status": "Could not execute Query"})
+		return
+	}
+	defer result.Close()
+
+	// Defining a struct to hold all the values from the Query result
+	type GetBookDetails struct {
+		ID           string `json:"id"`
+		Book         string `json:"book"`
+		Author       string `json:"author"`
+		DateStarted  string `json:"dateStarted"`
+		DateFinished string `json:"dateFinished"`
+	}
+
+	// Creating a slice from the struct
+	getBookDetails := []GetBookDetails{}
+
+	// Iterating over the results
+	for result.Next() {
+
+		//Creating a new struct
+		GetBookDetails := GetBookDetails{}
+
+		// Scan the results into the struct
+		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author, &GetBookDetails.DateStarted, &GetBookDetails.DateFinished)
+
+		//Converting Date which is in String to Integer and into DD-MMM-YYYY format
+		dateStartConversion, errs := strconv.Atoi(GetBookDetails.DateStarted)
+		if errs != nil {
+			c.JSON(500, gin.H{"status": "Error Processing Start Date"})
+			return
+		}
+
+		//Converting Date which is in String to Integer and into DD-MMM-YYYY format
+		dateFinishConversion, errs := strconv.Atoi(GetBookDetails.DateFinished)
+		if errs != nil {
+			c.JSON(500, gin.H{"status": "Error Processing Finish Date"})
+			return
+		}
+
+		//Adding the converted dates
+		GetBookDetails.DateStarted = convertEpochToDate(dateStartConversion)
+		GetBookDetails.DateFinished = convertEpochToDate(dateFinishConversion)
+
+		// Append to the slice
+		getBookDetails = append(getBookDetails, GetBookDetails)
+	}
+
+	// Returning all the data
+	c.JSON(200, gin.H{"finishedBookDetails": getBookDetails})
 
 }

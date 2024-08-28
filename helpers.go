@@ -61,14 +61,14 @@ func convertDateToEpoch(date string) int {
 }
 
 // Converts Epoch time to date in DD-MMM-YYYY format and returns it
-func convertEpochToDate(epochTime *int) string {
+func convertEpochToDate(epochTime int) string {
 
 	// If the received time is 0, return an empty string. If we do not have this, then time returned will be 01-Jan-1970
-	if int64(*epochTime) == 0 {
+	if int64(epochTime) == 0 {
 		return ""
 	}
 
-	unixTime := int64(*epochTime)
+	unixTime := int64(epochTime)
 
 	// Convert Unix time to Time object
 	t := time.Unix(unixTime, 0)

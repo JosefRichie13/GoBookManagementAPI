@@ -28,6 +28,7 @@ func main() {
 	request.GET("/getAllReadingBooks", getAllReadingBooks)
 	request.GET("/getAllFinishedBooks", getAllFinishedBooks)
 	request.GET("/getBooksByAuthor", getBooksByAuthor)
+	request.GET("/getBooksReadInAPeriod", getBooksReadInAPeriod)
 	request.Run(":8083")
 
 }
@@ -1006,6 +1007,106 @@ func getBooksByAuthor(c *gin.Context) {
 	// If there is no result, means, no book by that author exists. Return a 404
 	if len(getBookDetails) == 0 {
 		c.JSON(404, gin.H{"status": "No book by, " + getBooksByAuthorParameters.AuthorName + " found"})
+		return
+	}
+
+	// Returning all the data
+	c.JSON(200, gin.H{"booksByAuthor": getBookDetails})
+
+}
+
+// Defining JSON body for getBooksReadInAPeriod(). It requires 2 Query Parameters fromDate, toDate.
+type GetBooksReadInAPeriodParameters struct {
+	FromDate string `form:"fromDate" binding:"required"`
+	ToDate   string `form:"toDate" binding:"required"`
+}
+
+// Returns all Books by a specific author
+func getBooksReadInAPeriod(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Creating an instance of the struct, GetBooksReadInAPeriodParameters
+	var getBooksReadInAPeriodParameters GetBooksReadInAPeriodParameters
+
+	// Bind to the struct's members. If any member is invalid, binding does not happen and an error will be returned. Then its rejected with 400
+	if c.Bind(&getBooksReadInAPeriodParameters) != nil {
+		c.JSON(400, gin.H{"status": "Incorrect parameters, please provide all required parameters"})
+		return
+	}
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Checks if the supplied date is in DD-MMM-YYYY format
+	if !checkDateFormat(getBooksReadInAPeriodParameters.FromDate) || !checkDateFormat(getBooksReadInAPeriodParameters.ToDate) {
+		c.JSON(400, gin.H{"status": "Incorrect Date format, Date should be in DD-MMM-YYYY format, e.g., 27-Aug-2024"})
+		return
+	}
+
+	// Query the DB and result is held into the variable, result
+	queryToGetAllBooks := `SELECT ID, BOOK, AUTHOR, DATESTARTED, DATEFINISHED FROM BOOKMANAGEMENT WHERE DATESTARTED BETWEEN $1 AND $2 AND DATEFINISHED BETWEEN $1 AND $2;`
+	result, error := db.Query(queryToGetAllBooks, convertDateToEpoch(getBooksReadInAPeriodParameters.FromDate), convertDateToEpoch(getBooksReadInAPeriodParameters.ToDate))
+	// If there's any error when querying, return it
+	if error != nil {
+		c.JSON(500, gin.H{"status": "Could not execute Query"})
+		return
+	}
+	defer result.Close()
+
+	// Defining a struct to hold all the values from the Query result
+	type GetBookDetails struct {
+		ID           string `json:"id"`
+		Book         string `json:"book"`
+		Author       string `json:"author"`
+		DateStarted  string `json:"dateStarted"`
+		DateFinished string `json:"dateFinished"`
+	}
+
+	// Creating a slice from the struct
+	getBookDetails := []GetBookDetails{}
+
+	// Iterating over the results
+	for result.Next() {
+
+		//Creating a new struct
+		GetBookDetails := GetBookDetails{}
+
+		// Scan the results into the struct
+		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author, &GetBookDetails.DateStarted, &GetBookDetails.DateFinished)
+
+		//Converting Date which is in String to Integer and into DD-MMM-YYYY format
+		dateStartConversion, errs := strconv.Atoi(GetBookDetails.DateStarted)
+		if errs != nil {
+			c.JSON(500, gin.H{"status": "Error Processing Start Date"})
+			return
+		}
+
+		//Converting Date which is in String to Integer and into DD-MMM-YYYY format
+		dateFinishConversion, errs := strconv.Atoi(GetBookDetails.DateFinished)
+		if errs != nil {
+			c.JSON(500, gin.H{"status": "Error Processing Finish Date"})
+			return
+		}
+
+		//Adding the converted dates
+		GetBookDetails.DateStarted = convertEpochToDate(dateStartConversion)
+		GetBookDetails.DateFinished = convertEpochToDate(dateFinishConversion)
+
+		// Append to the slice
+		getBookDetails = append(getBookDetails, GetBookDetails)
+	}
+
+	// If there is no result, means, no book is started and finished between the supplied dates. Return a 404
+	if len(getBookDetails) == 0 {
+		c.JSON(404, gin.H{"status": "No book read between " + getBooksReadInAPeriodParameters.FromDate + " and " + getBooksReadInAPeriodParameters.ToDate})
 		return
 	}
 

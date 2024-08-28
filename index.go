@@ -1021,7 +1021,7 @@ type GetBooksReadInAPeriodParameters struct {
 	ToDate   string `form:"toDate" binding:"required"`
 }
 
-// Returns all Books by a specific author
+// Returns all Books by read in a specific period
 func getBooksReadInAPeriod(c *gin.Context) {
 
 	// Variables for DB and Error

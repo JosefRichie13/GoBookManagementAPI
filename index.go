@@ -678,7 +678,8 @@ func getBookDetails(c *gin.Context) {
 	// Else, its rejected with a 404 as there is no book by that ID
 	if len(getBookDetails.ID) > 0 {
 		c.JSON(200, gin.H{"bookID": getBookDetails.ID, "book": getBookDetails.Book, "author": getBookDetails.Author, "totalPages": getBookDetails.TotalPages,
-			"readPages": getBookDetails.ReadPages, "dateStarted": getBookDetails.DateStarted, "dateFinished": getBookDetails.DateFinished, "notes": getBookDetails.Notes})
+			"readPages": getBookDetails.ReadPages, "dateStarted": convertEpochToDate(getBookDetails.DateStarted), "dateFinished": convertEpochToDate(getBookDetails.DateFinished),
+			"notes": getBookDetails.Notes})
 	} else {
 		c.JSON(404, gin.H{"status": "No Book by ID, " + getBookDetailsParameters.BookID + " exists."})
 	}

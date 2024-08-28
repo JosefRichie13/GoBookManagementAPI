@@ -21,6 +21,7 @@ func main() {
 	request.POST("/addNote", addNote)
 	request.POST("/addToANote", addToANote)
 	request.GET("/getBookID", getBookID)
+	request.GET("/getBookDetails", getBookDetails)
 	request.Run(":8083")
 
 }
@@ -79,53 +80,6 @@ func addABook(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "Book Added", "bookID": generatedID})
 	}
 
-}
-
-// Defining JSON body for getBookID(). It requires 2 Query Parameters book, author.
-type GetBookIDParameters struct {
-	BookName   string `form:"book" binding:"required"`
-	AuthorName string `form:"author" binding:"required"`
-}
-
-// Returns the Book ID
-func getBookID(c *gin.Context) {
-
-	// Variables for DB and Error
-	var db *sql.DB
-	var err error
-
-	// Creating an instance of the struct, GetBookIDParameters
-	var getBookIDParameters GetBookIDParameters
-
-	// Bind to the struct's members. If any member is invalid, binding does not happen and an error will be returned. Then its rejected with 400
-	if c.Bind(&getBookIDParameters) != nil {
-		c.JSON(400, gin.H{"status": "Incorrect parameters, please provide all required parameters"})
-		return
-	}
-
-	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
-	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
-	if err != nil {
-		c.JSON(500, gin.H{"status": "Could not connect to DB"})
-		return
-	}
-	defer db.Close()
-
-	// Check if the Book and the Author exists in the DB by querying for the ID
-	// Result is scanned into the variable, checkResult
-	queryToCheckExistingBook := `SELECT ID FROM BOOKMANAGEMENT WHERE BOOK=$1 AND AUTHOR=$2;`
-	result := db.QueryRow(queryToCheckExistingBook, sanitizeString(getBookIDParameters.BookName), sanitizeString(getBookIDParameters.AuthorName))
-	var checkResult string
-	result.Scan(&checkResult)
-
-	// If the length of checkResult is greater than 0, means the query returned a result, so there is a book by that author
-	// We return the bookname, book author and ID
-	// Else, its rejected with a 404 as there is no book by that name and author
-	if len(checkResult) > 0 {
-		c.JSON(200, gin.H{"bookID": checkResult, "book": sanitizeString(getBookIDParameters.BookName), "author": sanitizeString(getBookIDParameters.AuthorName)})
-	} else {
-		c.JSON(404, gin.H{"status": "No Book by the name, " + sanitizeString(getBookIDParameters.BookName) + " written by " + sanitizeString(getBookIDParameters.AuthorName) + " exists"})
-	}
 }
 
 // Defining JSON body for updateBookDetails(). It requires 4 JSON key's bookID, book, author and totalPages.
@@ -599,4 +553,133 @@ func addToANote(c *gin.Context) {
 		c.JSON(404, gin.H{"status": "No Book with ID, " + addNoteParameters.BookID + " exists"})
 	}
 
+}
+
+// Defining JSON body for getBookID(). It requires 2 Query Parameters book, author.
+type GetBookIDParameters struct {
+	BookName   string `form:"book" binding:"required"`
+	AuthorName string `form:"author" binding:"required"`
+}
+
+// Returns the Book ID
+func getBookID(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Creating an instance of the struct, GetBookIDParameters
+	var getBookIDParameters GetBookIDParameters
+
+	// Bind to the struct's members. If any member is invalid, binding does not happen and an error will be returned. Then its rejected with 400
+	if c.Bind(&getBookIDParameters) != nil {
+		c.JSON(400, gin.H{"status": "Incorrect parameters, please provide all required parameters"})
+		return
+	}
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Check if the Book and the Author exists in the DB by querying for the ID
+	// Result is scanned into the variable, checkResult
+	queryToCheckExistingBook := `SELECT ID FROM BOOKMANAGEMENT WHERE BOOK=$1 AND AUTHOR=$2;`
+	result := db.QueryRow(queryToCheckExistingBook, sanitizeString(getBookIDParameters.BookName), sanitizeString(getBookIDParameters.AuthorName))
+	var checkResult string
+	result.Scan(&checkResult)
+
+	// If the length of checkResult is greater than 0, means the query returned a result, so there is a book by that author
+	// We return the bookname, book author and ID
+	// Else, its rejected with a 404 as there is no book by that name and author
+	if len(checkResult) > 0 {
+		c.JSON(200, gin.H{"bookID": checkResult, "book": sanitizeString(getBookIDParameters.BookName), "author": sanitizeString(getBookIDParameters.AuthorName)})
+	} else {
+		c.JSON(404, gin.H{"status": "No Book by the name, " + sanitizeString(getBookIDParameters.BookName) + " written by " + sanitizeString(getBookIDParameters.AuthorName) + " exists"})
+	}
+}
+
+// Defining JSON body for getBookDetails(). It requires 1 Query Parameter bookID.
+type GetBookDetailsParameters struct {
+	BookID string `form:"bookID" binding:"required"`
+}
+
+// Returns the Book Details
+func getBookDetails(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Creating an instance of the struct, GetBookDetailsParameters
+	var getBookDetailsParameters GetBookDetailsParameters
+
+	// Bind to the struct's members. If any member is invalid, binding does not happen and an error will be returned. Then its rejected with 400
+	if c.Bind(&getBookDetailsParameters) != nil {
+		c.JSON(400, gin.H{"status": "Incorrect parameters, please provide all required parameters"})
+		return
+	}
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Check if the exists in the DB by querying using the ID
+	// Result is scanned into the variable, checkResult
+	queryToCheckExistingBook := `SELECT * FROM BOOKMANAGEMENT WHERE ID = $1;`
+	result := db.QueryRow(queryToCheckExistingBook, getBookDetailsParameters.BookID)
+
+	// Defining a struct to hold all the values from the Query result
+	type GetBookDetails struct {
+		ID           string
+		Book         string
+		Author       string
+		TotalPages   int
+		ReadPages    int
+		DateStarted  *int    // Using pointers here as this value may be null
+		DateFinished *int    // Using pointers here as this value may be null
+		Notes        *string // Using pointers here as this value may be null
+	}
+
+	// Creating an instance of the struct, GetBookDetails
+	var getBookDetails GetBookDetails
+
+	// Scan the query result into the struct's members
+	result.Scan(&getBookDetails.ID, &getBookDetails.Book, &getBookDetails.Author, &getBookDetails.TotalPages, &getBookDetails.ReadPages,
+		&getBookDetails.DateStarted, &getBookDetails.DateFinished, &getBookDetails.Notes)
+
+	// If the DateStarted is null, assign 0 to it
+	if getBookDetails.DateStarted == nil {
+		placeHolder := 0
+		getBookDetails.DateStarted = &placeHolder
+	}
+
+	// If the DateFinished is null, assign 0 to it
+	if getBookDetails.DateFinished == nil {
+		placeHolder := 0
+		getBookDetails.DateFinished = &placeHolder
+	}
+
+	// If the Notes is null, assign an empty string to it
+	if getBookDetails.Notes == nil {
+		placeHolder := ""
+		getBookDetails.Notes = &placeHolder
+	}
+
+	// If the length of getBookDetails.ID is greater than 0, means the query returned a result, so there is a book by that ID
+	// We return all the details
+	// Else, its rejected with a 404 as there is no book by that ID
+	if len(getBookDetails.ID) > 0 {
+		c.JSON(200, gin.H{"bookID": getBookDetails.ID, "book": getBookDetails.Book, "author": getBookDetails.Author, "totalPages": getBookDetails.TotalPages,
+			"readPages": getBookDetails.ReadPages, "dateStarted": getBookDetails.DateStarted, "dateFinished": getBookDetails.DateFinished, "notes": getBookDetails.Notes})
+	} else {
+		c.JSON(404, gin.H{"status": "No Book by ID, " + getBookDetailsParameters.BookID + " exists."})
+	}
 }

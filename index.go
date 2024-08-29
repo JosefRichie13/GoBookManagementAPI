@@ -36,7 +36,7 @@ func main() {
 
 // Landing page route
 func landingPage(c *gin.Context) {
-	c.JSON(200, "Hello, Welcome to Book Management API")
+	c.File("BookManagement.html")
 }
 
 // Defining JSON body for deleteBook(). It requires 1 Query Parameter bookID.

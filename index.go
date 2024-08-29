@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"math"
 	"strconv"
 
 	_ "modernc.org/sqlite"
@@ -369,8 +370,8 @@ func updateABook(c *gin.Context) {
 		result.Scan(&checkDates.totalPages, &checkDates.checkDateStarted, &checkDates.checkDateFinished)
 
 		// If the suppiled pages is greater less than the total pages, reject with 400
-		if updateABookParameters.Pages > checkDates.totalPages {
-			c.JSON(400, gin.H{"status": "Read pages cannot be greater than Total pages"})
+		if updateABookParameters.Pages >= checkDates.totalPages {
+			c.JSON(400, gin.H{"status": "Read pages cannot be greater or equal to Total pages."})
 			return
 		}
 
@@ -829,13 +830,15 @@ func getAllReadingBooks(c *gin.Context) {
 
 	// Defining a struct to hold all the values from the Query result
 	type GetBookDetails struct {
-		ID             string `json:"id"`
-		Book           string `json:"book"`
-		Author         string `json:"author"`
-		DateStarted    string `json:"dateStarted"`
-		TotalPages     int    `json:"totalPages"`
-		ReadPages      int    `json:"readPages"`
-		RemainingPages int    `json:"remainingPages"`
+		ID                 string  `json:"id"`
+		Book               string  `json:"book"`
+		Author             string  `json:"author"`
+		DateStarted        string  `json:"dateStarted"`
+		TotalPages         int     `json:"totalPages"`
+		ReadPages          int     `json:"readPages"`
+		RemainingPages     int     `json:"remainingPages"`
+		PercentageFinished float64 `json:"percentageFinished"`
+		PercentageLeft     float64 `json:"percentageLeft"`
 	}
 
 	// Creating a slice from the struct
@@ -846,6 +849,7 @@ func getAllReadingBooks(c *gin.Context) {
 
 		//Creating a new struct
 		GetBookDetails := GetBookDetails{}
+
 		// Scan the results into the struct
 		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author, &GetBookDetails.DateStarted, &GetBookDetails.TotalPages, &GetBookDetails.ReadPages)
 
@@ -861,6 +865,15 @@ func getAllReadingBooks(c *gin.Context) {
 
 		// Calculating remaining pages, subtracting Read pages from Total pages, gives us the remaining pages
 		GetBookDetails.RemainingPages = GetBookDetails.TotalPages - GetBookDetails.ReadPages
+
+		// Calculating the percentage of pages left to read
+		GetBookDetails.PercentageLeft = 100 - (float64(GetBookDetails.ReadPages)/float64(GetBookDetails.TotalPages))*100
+		GetBookDetails.PercentageLeft = math.Round(GetBookDetails.PercentageLeft)
+
+		// Calculating the percentage of finished pages
+		GetBookDetails.PercentageFinished = (float64(GetBookDetails.ReadPages) / float64(GetBookDetails.TotalPages)) * 100
+		GetBookDetails.PercentageFinished = math.Round(GetBookDetails.PercentageFinished)
+
 		// Append to the slice
 		getBookDetails = append(getBookDetails, GetBookDetails)
 	}

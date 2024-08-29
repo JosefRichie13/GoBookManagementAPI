@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"math"
 	"strconv"
 
@@ -915,6 +916,7 @@ func getAllFinishedBooks(c *gin.Context) {
 		Author       string `json:"author"`
 		DateStarted  string `json:"dateStarted"`
 		DateFinished string `json:"dateFinished"`
+		DaysRead     int64  `json:"daysRead"`
 	}
 
 	// Creating a slice from the struct
@@ -941,6 +943,27 @@ func getAllFinishedBooks(c *gin.Context) {
 		if errs != nil {
 			c.JSON(500, gin.H{"status": "Error Processing Finish Date"})
 			return
+		}
+
+		// Calculating the days in which a book was read
+		// Convert Start and Finished dates, in Epoch times, to Integers from strings
+		startDateInInt, startErr := strconv.ParseInt(GetBookDetails.DateStarted, 10, 64)
+		if startErr != nil {
+			fmt.Println("Error converting Start Date to int")
+		}
+		finishDateInInt, finishErr := strconv.ParseInt(GetBookDetails.DateFinished, 10, 64)
+		if finishErr != nil {
+			fmt.Println("Error converting Finish Date to int")
+		}
+
+		// Calculate no of days read by subtracting Start date in Epoch from Finished date in Epoch and dividing it by 86400
+		// As Epoch is in seconds, dividing by 86400 (no of seconds in a day) will give the no of days
+		// If the daysRead is 0, happens when the Date Start and Date Finished are the same, we set it to 1
+		daysRead := (finishDateInInt - startDateInInt) / 86400
+		if daysRead == 0 {
+			GetBookDetails.DaysRead = 1
+		} else {
+			GetBookDetails.DaysRead = daysRead
 		}
 
 		//Adding the converted dates

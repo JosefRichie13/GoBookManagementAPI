@@ -292,3 +292,77 @@ func getBooksReadInAPeriod(c *gin.Context) {
 	c.JSON(200, gin.H{"booksByAuthor": getBookDetails})
 
 }
+
+// Defining JSON body for getBookContaining(). It requires 1 Query Parameter name.
+type GetBooksContainingParameters struct {
+	Name string `form:"name" binding:"required"`
+}
+
+// Returns all Books containing a specific word
+func getBookContaining(c *gin.Context) {
+
+	// Variables for DB and Error
+	var db *sql.DB
+	var err error
+
+	// Creating an instance of the struct, GetBooksContainingParameters
+	var getBooksContainingParameters GetBooksContainingParameters
+
+	// Bind to the struct's members. If any member is invalid, binding does not happen and an error will be returned. Then its rejected with 400
+	if c.Bind(&getBooksContainingParameters) != nil {
+		c.JSON(400, gin.H{"status": "Incorrect parameters, please provide all required parameters"})
+		return
+	}
+
+	// Connect to the DB. If there is any issue connecting to the DB, throw a 500 error and return
+	db, err = sql.Open("sqlite", "./BOOKMANAGEMENT.db")
+	if err != nil {
+		c.JSON(500, gin.H{"status": "Could not connect to DB"})
+		return
+	}
+	defer db.Close()
+
+	// Query the DB and result is held into the variable, result
+	queryToGetAllBooks := `SELECT ID, BOOK, AUTHOR FROM BOOKMANAGEMENT WHERE BOOK LIKE '%' || $1 || '%';`
+	result, error := db.Query(queryToGetAllBooks, getBooksContainingParameters.Name)
+
+	// If there's any error when querying, return it
+	if error != nil {
+		c.JSON(500, gin.H{"status": "Could not execute Query"})
+		return
+	}
+	defer result.Close()
+
+	// Defining a struct to hold all the values from the Query result
+	type GetBookDetails struct {
+		ID     string `json:"id"`
+		Book   string `json:"book"`
+		Author string `json:"author"`
+	}
+
+	// Creating a slice from the struct
+	getBookDetails := []GetBookDetails{}
+
+	// Iterating over the results
+	for result.Next() {
+
+		//Creating a new struct
+		GetBookDetails := GetBookDetails{}
+
+		// Scan the results into the struct
+		result.Scan(&GetBookDetails.ID, &GetBookDetails.Book, &GetBookDetails.Author)
+
+		// Append to the slice
+		getBookDetails = append(getBookDetails, GetBookDetails)
+	}
+
+	// If there is no result, means, no book is present with that specific word. Return a 404
+	if len(getBookDetails) == 0 {
+		c.JSON(404, gin.H{"status": "No book found with " + getBooksContainingParameters.Name + " in its name."})
+		return
+	}
+
+	// Returning all the data
+	c.JSON(200, gin.H{"books": getBookDetails})
+
+}

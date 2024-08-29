@@ -28,6 +28,7 @@ func main() {
 	request.GET("/getAllFinishedBooks", getAllFinishedBooks)
 	request.GET("/getBooksByAuthor", getBooksByAuthor)
 	request.GET("/getBooksReadInAPeriod", getBooksReadInAPeriod)
+	request.GET("/getBookContaining", getBookContaining)
 	request.DELETE("/deleteBook", deleteBook)
 	request.Run(":8083")
 

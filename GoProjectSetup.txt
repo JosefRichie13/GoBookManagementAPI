@@ -1,0 +1,31 @@
+Go API Project
+
+Steps to create an API project in Go, including hot reload with Air 
+
+1) Create a directory -- e.g. GoBookManagementAPI
+
+2) Open this directory via VSCode 
+
+3) Initiate the Project
+		-- Run this command in the terminal : go mod init <DIRECTORY_NAME>
+		-- e.g. go mod init GoBookManagementAPI 
+		-- It will create a go.mod file 
+
+4) Install Gonic 
+		-- Run go get github.com/gin-gonic/gin in the terminal 
+		-- It will create a go.sum file
+		
+5) Install Air
+		-- Run go install github.com/air-verse/air@latest
+		
+6) Create a .air.toml file in the project root with the below lines.
+
+		# air.toml
+		root = "."
+		tmp_dir = "tmp"
+		build_cmd = "go build -o ./tmp/main ."
+		run_cmd = "./tmp/main"
+
+7) Start writing your project, i.e. create a index.go file and write your code. 
+
+8) Run the project using command 'air' in the termial. This will run through Air and enable hot reload.

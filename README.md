@@ -1,4 +1,4 @@
-# Backend for a Book Management App using Gin Gonic and Go
+# Backend for a Book Management App using Gin Gonic, SQLite and Go
 
 This repo has the code for a Book Management App Backend. 
 

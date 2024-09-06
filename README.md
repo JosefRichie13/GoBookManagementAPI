@@ -1,6 +1,6 @@
 # Backend for a Book Management App using Gin Gonic, SQLite and Go
 
-This repo has the code for a Book Management App Backend. 
+This repo has the code for a Book Management App Backend. <br><br>
 
 The below REST API endpoints are exposed
 
@@ -38,6 +38,6 @@ The below REST API endpoints are exposed
   
 * POST /addToANote -- Adds to a note of a book
   
-* DELETE /deleteBook -- Deletes a book
+* DELETE /deleteBook -- Deletes a book <br><br>
 
 The entire suite of endpoints with payloads are available in this HAR, [GoBookManagementAPI.har](GoBookManagementAPI.har)

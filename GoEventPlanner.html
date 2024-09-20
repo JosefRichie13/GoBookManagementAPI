@@ -1,0 +1,30 @@
+<h1 id="backend-for-an-event-planner-app-using-gin-gonic-sqlite-and-go">Backend for an Event Planner App using Gin Gonic, SQLite and Go</h1>
+<p>This repo has the code for an Event Planner App Backend. <br><br></p>
+<p>The below REST API endpoints are exposed</p>
+<ul>
+<li><p>POST /createAnEvent -- Creates an Event</p>
+</li>
+<li><p>PUT /startEvent -- Starts an Event</p>
+</li>
+<li><p>PUT /finishEvent -- Finishes an Event</p>
+</li>
+<li><p>PUT /resetEventDates -- Resets an Event&#39;s Start and Finish Dates</p>
+</li>
+<li><p>PUT /updateEvent -- Updates an Event&#39;s details</p>
+</li>
+<li><p>PUT /uploadMedia -- Uploads media to an Event</p>
+</li>
+<li><p>GET /getAllEvents -- Returns all the available Event&#39;s details</p>
+</li>
+<li><p>GET /getEventDetails -- Returns a specific Event&#39;s details</p>
+</li>
+<li><p>GET /getEventDetailsPage -- Returns a specific Event&#39;s details in an HTML page</p>
+</li>
+<li><p>DELETE /deleteEvent -- Deletes an Event</p>
+</li>
+<li><p>DELETE /deleteEventMedia -- Deletes all the media of an Event</p>
+</li>
+<li><p>DELETE /deleteSpecificEventMedia -- Deletes a specific media of an Event<br><br></p>
+</li>
+</ul>
+<p>The entire suite of endpoints with payloads are available in GoEventPlannerAPI.har file. Check the GitHub repo for it.</p>
